@@ -13,7 +13,6 @@ public partial class MainViewModel : ObservableObject
 {
     readonly DatabaseService _db;
     readonly VideoDownloadService _engine;
-    readonly GenericVideoResolver _resolver = new();
     readonly HttpClient _http = new(new HttpClientHandler { AllowAutoRedirect = true, UseCookies = true }) { Timeout = TimeSpan.FromSeconds(20) };
     SemaphoreSlim _concurrency = new(3);
     CancellationTokenSource _cancelAll = new();
@@ -95,9 +94,23 @@ public partial class MainViewModel : ObservableObject
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(_cancelAll.Token);
             task.Status = DownloadStatus.Parsing;
 
-            var resolved = await _site.ResolveVideoAsync(task.Url, _http);
-            if (resolved == null) { task.ErrorMessage="解析失败，找不到视频直链"; task.Status=DownloadStatus.Failed; return; }
-            var (videoUrl, referer, title) = resolved.Value;
+            string videoUrl, referer, title;
+
+            // 根据 URL 判断走哪种解析逻辑
+            if (task.Url.Contains("91pinse.com"))
+            {
+                var resolved = await _site.ResolveVideoAsync(task.Url, _http);
+                if (resolved == null) { task.ErrorMessage="解析失败"; task.Status=DownloadStatus.Failed; return; }
+                (videoUrl, referer, title) = resolved.Value;
+            }
+            else
+            {
+                // 直接当视频直链处理
+                videoUrl = task.Url;
+                referer = task.Url;
+                title = $"video_{Random.Shared.Next(10000,99999)}";
+            }
+
             if (string.IsNullOrWhiteSpace(task.Title)) task.Title = title;
 
             double lp = 0;
@@ -110,7 +123,9 @@ public partial class MainViewModel : ObservableObject
                 else if (p.State==DownloadState.PostProcessing) task.Status=DownloadStatus.PostProcessing;
             });
 
-            var headers = _site.GetDownloadHeaders(referer);
+            var headers = new Dictionary<string, string> { ["User-Agent"] = _site.UserAgent, ["Referer"] = referer };
+            try { var u = new Uri(referer); headers["Origin"] = $"{u.Scheme}://{u.Host}"; } catch { }
+
             var path = await _engine.DownloadAsync(videoUrl, headers, task.Title, prog, cts.Token);
 
             if (path != null)
