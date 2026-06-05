@@ -28,7 +28,7 @@ public class PinseSite : IDeepGrabSite
     ];
 
     public IReadOnlyList<(string Label, string Value)> DurationFilters { get; } =
-        [("全部",""), ("<5分钟","short"), ("5-20分钟","medium"), ("≥20分钟","long")];
+        [("全部",""), ("<5分钟","&dur=short"), ("5-20分钟","&dur=medium"), ("≥20分钟","&dur=long")];
 
     public string BuildSearchUrl(string keyword) =>
         $"https://91pinse.com/v/search?keyword={Uri.EscapeDataString(keyword)}";

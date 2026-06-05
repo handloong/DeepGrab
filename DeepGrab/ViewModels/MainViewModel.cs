@@ -13,16 +13,22 @@ public partial class MainViewModel : ObservableObject
 {
     readonly DatabaseService _db;
     readonly VideoDownloadService _engine;
-    readonly HttpClient _http = new(new HttpClientHandler { AllowAutoRedirect = true, UseCookies = true }) { Timeout = TimeSpan.FromSeconds(20) };
+    readonly HttpClient _http = new(new HttpClientHandler {
+        AllowAutoRedirect = true,
+        UseCookies = true,
+        AutomaticDecompression = System.Net.DecompressionMethods.All
+    }) { Timeout = TimeSpan.FromSeconds(30) };
     SemaphoreSlim _concurrency = new(3);
     CancellationTokenSource _cancelAll = new();
 
     [ObservableProperty] private string _inputUrl = "";
     public ObservableCollection<DownloadTask> Downloads { get; } = [];
     public ExploreViewModel Explore { get; }
+    public ExploreViewModel PornhubExplore { get; }
     public SettingsViewModel Settings { get; }
 
-    readonly IDeepGrabSite _site;
+    readonly IDeepGrabSite _pinse;
+    readonly IDeepGrabSite _ph;
 
     public MainViewModel()
     {
@@ -30,9 +36,13 @@ public partial class MainViewModel : ObservableObject
         _db = new DatabaseService(basePath);
         _engine = new VideoDownloadService(basePath);
 
-        _site = new PinseSite();
-        Explore = new ExploreViewModel(_db, _site);
+        _pinse = new PinseSite();
+        Explore = new ExploreViewModel(_db, _pinse);
         Explore.VideoSelected += (url, title) => StartDownload(url, title);
+
+        _ph = new PHSite();
+        PornhubExplore = new ExploreViewModel(_db, _ph);
+        PornhubExplore.VideoSelected += (url, title) => StartDownload(url, title);
 
         Settings = new SettingsViewModel(_db);
         Settings.SettingsChanged += ApplySettings;
@@ -96,10 +106,14 @@ public partial class MainViewModel : ObservableObject
 
             string videoUrl, referer, title;
 
-            // 根据 URL 判断走哪种解析逻辑
-            if (task.Url.Contains("91pinse.com"))
+            // 根据 URL 匹配站点解析逻辑
+            var site = task.Url.Contains("pornhub.com") ? _ph :
+                       task.Url.Contains("91pinse.com") ? _pinse :
+                       null;
+
+            if (site != null)
             {
-                var resolved = await _site.ResolveVideoAsync(task.Url, _http);
+                var resolved = await site.ResolveVideoAsync(task.Url, _http);
                 if (resolved == null) { task.ErrorMessage="解析失败"; task.Status=DownloadStatus.Failed; return; }
                 (videoUrl, referer, title) = resolved.Value;
             }
@@ -113,20 +127,39 @@ public partial class MainViewModel : ObservableObject
 
             if (string.IsNullOrWhiteSpace(task.Title)) task.Title = title;
 
-            double lp = 0;
-            var prog = new Progress<DownloadProgress>(p => {
-                double raw = (double)p.Progress, sm = raw;
-                if (raw > lp) { double ms = Math.Max(3, (100-lp)*0.1); sm = Math.Min(raw, lp+ms); }
-                lp = Math.Max(lp, sm);
-                task.Progress=sm; task.Speed=p.DownloadSpeed??""; task.Eta=p.ETA??"";
-                if (p.State==DownloadState.Downloading) task.Status=DownloadStatus.Downloading;
-                else if (p.State==DownloadState.PostProcessing) task.Status=DownloadStatus.PostProcessing;
-            });
+            string? path;
 
-            var headers = new Dictionary<string, string> { ["User-Agent"] = _site.UserAgent, ["Referer"] = referer };
-            try { var u = new Uri(referer); headers["Origin"] = $"{u.Scheme}://{u.Host}"; } catch { }
+            // PH 等站点：HttpClient 下载 ts 分片 + ffmpeg 本地拼接
+            if (site?.UseFfmpegDownload == true)
+            {
+                task.Status = DownloadStatus.Downloading;
+                path = await _engine.DownloadWithFfmpegAsync(
+                    videoUrl, task.Title, referer, _http,
+                    (done, total) =>
+                    {
+                        task.Progress = total > 0 ? (double)done / total * 100 : 0;
+                        task.Speed = $"ts {done}/{total}";
+                        task.Eta = "下载分片";
+                    },
+                    cts.Token);
+            }
+            else
+            {
+                double lp = 0;
+                var prog = new Progress<DownloadProgress>(p => {
+                    double raw = (double)p.Progress, sm = raw;
+                    if (raw > lp) { double ms = Math.Max(3, (100-lp)*0.1); sm = Math.Min(raw, lp+ms); }
+                    lp = Math.Max(lp, sm);
+                    task.Progress=sm; task.Speed=p.DownloadSpeed??""; task.Eta=p.ETA??"";
+                    if (p.State==DownloadState.Downloading) task.Status=DownloadStatus.Downloading;
+                    else if (p.State==DownloadState.PostProcessing) task.Status=DownloadStatus.PostProcessing;
+                });
 
-            var path = await _engine.DownloadAsync(videoUrl, headers, task.Title, prog, cts.Token);
+                var headers = new Dictionary<string, string> { ["User-Agent"] = (site ?? _pinse).UserAgent, ["Referer"] = referer };
+                try { var u = new Uri(referer); headers["Origin"] = $"{u.Scheme}://{u.Host}"; } catch { }
+
+                path = await _engine.DownloadAsync(videoUrl, headers, task.Title, prog, cts.Token);
+            }
 
             if (path != null)
             {
@@ -134,7 +167,7 @@ public partial class MainViewModel : ObservableObject
                 long size = 0; try { size = new FileInfo(path).Length; } catch { }
                 _db.InsertRecord(task.Url, task.Title, path, size);
             }
-            else { task.ErrorMessage="下载失败，yt-dlp 返回错误"; task.Status=DownloadStatus.Failed; }
+            else { task.ErrorMessage="下载失败"; task.Status=DownloadStatus.Failed; }
         }
         catch (OperationCanceledException) { task.ErrorMessage="已取消"; task.Status=DownloadStatus.Failed; }
         catch (Exception ex) { task.ErrorMessage=ex.Message; task.Status=DownloadStatus.Failed; }

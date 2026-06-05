@@ -14,4 +14,6 @@ public interface IDeepGrabSite
     Task<(string VideoUrl, string RefererUrl, string Title)?> ResolveVideoAsync(string pageUrl, HttpClient http);
     Dictionary<string, string> GetDownloadHeaders(string refererUrl);
     IReadOnlyList<(string Label, string Value)> DurationFilters { get; }
+    /// <summary>是否使用 ffmpeg 直接下载（用于 m3u8 流），默认 false 使用 yt-dlp</summary>
+    bool UseFfmpegDownload => false;
 }

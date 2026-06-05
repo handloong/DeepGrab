@@ -9,7 +9,11 @@ namespace DeepGrab.ViewModels;
 
 public partial class ExploreViewModel : ObservableObject
 {
-    readonly HttpClient _http = new(new HttpClientHandler{AllowAutoRedirect=true}){Timeout=TimeSpan.FromSeconds(15)};
+    readonly HttpClient _http = new(new HttpClientHandler{
+        AllowAutoRedirect = true,
+        UseCookies = true,
+        AutomaticDecompression = System.Net.DecompressionMethods.All
+    }){ Timeout = TimeSpan.FromSeconds(15) };
     readonly DatabaseService _db;
     readonly HashSet<string> _downloadedUrls;
     readonly IDeepGrabSite _site;
@@ -59,7 +63,7 @@ public partial class ExploreViewModel : ObservableObject
         if (di >= 0 && di < fs.Count) { dl = fs[di].Label; dv = fs[di].Value; }
         CurrentLabel = $"搜索: {SearchKeyword} ({dl})";
         string url = _site.BuildSearchUrl(SearchKeyword.Trim());
-        if (!string.IsNullOrEmpty(dv)) url += $"&dur={dv}";
+        if (!string.IsNullOrEmpty(dv)) url += dv;
         await FirstPage(null, url);
     }
 
@@ -85,15 +89,33 @@ public partial class ExploreViewModel : ObservableObject
     {
         if(label!=null) CurrentLabel=label;
         _baseUrl=url; _currentPage=1; HasNextPage=true; Videos.Clear(); IsLoading=true;
-        try{await AppendPage(url);}finally{IsLoading=false;}
+        try
+        {
+            // 预热：访问首页获取 Cloudflare cookie（对需要反爬的站点有效）
+            try { using var w = new HttpRequestMessage(HttpMethod.Get, _site.BaseUrl+"/"); AddHeaders(w, null); await _http.SendAsync(w); } catch { }
+            await AppendPage(url);
+        }
+        finally { IsLoading=false; }
+    }
+
+    void AddHeaders(HttpRequestMessage req, string? referer)
+    {
+        req.Headers.TryAddWithoutValidation("User-Agent", _site.UserAgent);
+        req.Headers.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8");
+        req.Headers.TryAddWithoutValidation("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
+        req.Headers.TryAddWithoutValidation("Cache-Control", "max-age=0");
+        req.Headers.TryAddWithoutValidation("Sec-Fetch-Dest", "document");
+        req.Headers.TryAddWithoutValidation("Sec-Fetch-Mode", "navigate");
+        req.Headers.TryAddWithoutValidation("Sec-Fetch-Site", "none");
+        req.Headers.TryAddWithoutValidation("Upgrade-Insecure-Requests", "1");
+        if (!string.IsNullOrEmpty(referer))
+            req.Headers.TryAddWithoutValidation("Referer", referer);
     }
 
     async Task AppendPage(string url)
     {
         using var req = new HttpRequestMessage(HttpMethod.Get, url);
-        req.Headers.TryAddWithoutValidation("User-Agent", _site.UserAgent);
-        req.Headers.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml");
-        req.Headers.TryAddWithoutValidation("Accept-Language", "zh-CN,zh;q=0.9");
+        AddHeaders(req, _site.BaseUrl + "/");
         using var resp = await _http.SendAsync(req); resp.EnsureSuccessStatusCode();
         string html = await resp.Content.ReadAsStringAsync();
         foreach(var item in _site.ParseVideoList(html))

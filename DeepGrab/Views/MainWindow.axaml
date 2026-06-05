@@ -72,7 +72,49 @@
                 </DockPanel>
             </TabItem>
 
-            <!-- Tab 2: 下载管理 -->
+            <!-- Tab 2: Pornhub 探索 -->
+            <TabItem Header="Pornhub">
+                <DockPanel Margin="12">
+                    <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,8">
+                        <WrapPanel>
+                            <Button x:Name="PhBtnCat0" Click="OnPhCategoryClick" Tag="0" MinWidth="70" FontSize="12" Padding="6,3" Margin="0,0,3,3"/>
+                            <Button x:Name="PhBtnCat1" Click="OnPhCategoryClick" Tag="1" MinWidth="70" FontSize="12" Padding="6,3" Margin="0,0,3,3"/>
+                            <Button x:Name="PhBtnCat2" Click="OnPhCategoryClick" Tag="2" MinWidth="70" FontSize="12" Padding="6,3" Margin="0,0,3,3"/>
+                        </WrapPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <ComboBox x:Name="PhDurCombo" SelectedIndex="{Binding PornhubExplore.DurationIndex}" Width="95" FontSize="12" VerticalAlignment="Center"/>
+                            <TextBox Text="{Binding PornhubExplore.SearchKeyword, Mode=TwoWay}" Watermark="搜索关键词..." VerticalAlignment="Center" MinWidth="120" FontSize="12"/>
+                            <Button Command="{Binding PornhubExplore.SearchCommand}" Content="搜索" MinWidth="50" FontSize="12" Padding="6,3"/>
+                            <Border Width="1" Background="#444" Margin="4,2"/>
+                            <Button Command="{Binding PornhubExplore.DownloadSelectedCommand}" Content="下载选中" MinWidth="72" FontSize="12" Padding="6,3"/>
+                            <Button Command="{Binding PornhubExplore.LoadNextPageCommand}" Content="加载更多" IsEnabled="{Binding PornhubExplore.HasNextPage}" MinWidth="72" FontSize="12" Padding="6,3"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding PornhubExplore.CurrentLabel}" FontSize="13" FontWeight="Bold" Foreground="#CCC" Margin="0,2,0,0"/>
+                        <ProgressBar IsIndeterminate="True" Height="2" IsVisible="{Binding PornhubExplore.IsLoading}"/>
+                    </StackPanel>
+                    <Grid DockPanel.Dock="Top" ColumnDefinitions="44,32,*,70" Margin="0,0,0,2" Background="#2A2A2A">
+                        <TextBlock Grid.Column="0" Text="序号" FontSize="11" FontWeight="Bold" Foreground="#888" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        <CheckBox Grid.Column="1" Margin="6,2" Click="OnPhExploreSelectAll" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="2" Text="标题" FontSize="12" FontWeight="Bold" Foreground="#AAA" VerticalAlignment="Center" Margin="6,0"/>
+                        <TextBlock Grid.Column="3" Text="时长" FontSize="12" FontWeight="Bold" Foreground="#AAA" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </Grid>
+                    <ScrollViewer x:Name="PhScrollViewer"><ItemsControl ItemsSource="{Binding PornhubExplore.Videos}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="1"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate><DataTemplate DataType="models:VideoItem">
+                            <Border Padding="5,3" BorderBrush="#333" BorderThickness="0,0,0,1" Background="{Binding RowBg}">
+                                <Grid ColumnDefinitions="44,32,*,70" VerticalAlignment="Center">
+                                    <TextBlock Grid.Column="0" Text="{Binding Number}" FontSize="11" Foreground="#666" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                    <CheckBox Grid.Column="1" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding Title}" FontSize="12" Foreground="#DDD" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="4,0" ToolTip.Tip="{Binding TipText}"/>
+                                    <TextBlock Grid.Column="3" Text="{Binding Duration, FallbackValue='--'}" FontSize="11" Foreground="#888" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate></ItemsControl.ItemTemplate>
+                    </ItemsControl></ScrollViewer>
+                </DockPanel>
+            </TabItem>
+
+            <!-- Tab 3: 下载管理 -->
             <TabItem Header="下载管理">
                 <DockPanel Margin="12">
                     <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,12">
@@ -117,7 +159,7 @@
                 </DockPanel>
             </TabItem>
 
-            <!-- Tab 3: 设置 -->
+            <!-- Tab 4: 设置 -->
             <TabItem Header="设置">
                 <ScrollViewer><StackPanel Margin="16" Spacing="12" MaxWidth="500">
                     <TextBlock Text="下载设置" FontSize="16" FontWeight="Bold" Foreground="#CCC"/>
