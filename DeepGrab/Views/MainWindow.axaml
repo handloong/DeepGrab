@@ -1,0 +1,138 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:DeepGrab.ViewModels"
+        xmlns:models="using:DeepGrab.Models"
+        x:Class="DeepGrab.Views.MainWindow"
+        x:Name="MainWin"
+        Title="DeepGrab"
+        Width="920" Height="700"
+        MinWidth="700" MinHeight="500"
+        WindowStartupLocation="CenterScreen"
+        FontFamily="Microsoft YaHei, SimHei, sans-serif"
+        Background="#0D0D0D">
+    <Design.DataContext><vm:MainViewModel/></Design.DataContext>
+    <DockPanel>
+        <!-- Logo 头部 -->
+        <Border DockPanel.Dock="Top" Background="#1A1A1A" Padding="12,8" BorderBrush="#333" BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+                <Border Background="#FF9900" CornerRadius="4" Padding="8,4">
+                    <TextBlock Text="DG" FontSize="18" FontWeight="Black" Foreground="#0D0D0D"/>
+                </Border>
+                <StackPanel>
+                    <TextBlock Text="DeepGrab" FontSize="18" FontWeight="Bold" Foreground="#FF9900"/>
+                    <TextBlock Text="视频抓取工具" FontSize="10" Foreground="#888"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <TabControl>
+            <!-- Tab 1: 91Pinse 探索 -->
+            <TabItem Header="91Pinse 探索">
+                <DockPanel Margin="12">
+                    <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,8">
+                        <WrapPanel>
+                            <Button x:Name="BtnCat0" Click="OnCategoryClick" Tag="0" MinWidth="70" FontSize="12" Padding="6,3" Margin="0,0,3,3"/>
+                            <Button x:Name="BtnCat1" Click="OnCategoryClick" Tag="1" MinWidth="70" FontSize="12" Padding="6,3" Margin="0,0,3,3"/>
+                            <Button x:Name="BtnCat2" Click="OnCategoryClick" Tag="2" MinWidth="70" FontSize="12" Padding="6,3" Margin="0,0,3,3"/>
+                            <Button x:Name="BtnCat3" Click="OnCategoryClick" Tag="3" MinWidth="70" FontSize="12" Padding="6,3" Margin="0,0,3,3"/>
+                            <Button x:Name="BtnCat4" Click="OnCategoryClick" Tag="4" MinWidth="78" FontSize="12" Padding="6,3" Margin="0,0,3,3"/>
+                            <Button x:Name="BtnCat5" Click="OnCategoryClick" Tag="5" MinWidth="70" FontSize="12" Padding="6,3" Margin="0,0,3,3"/>
+                            <Button x:Name="BtnCat6" Click="OnCategoryClick" Tag="6" MinWidth="70" FontSize="12" Padding="6,3" Margin="0,0,3,3"/>
+                        </WrapPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <ComboBox x:Name="DurCombo" SelectedIndex="{Binding Explore.DurationIndex}" Width="95" FontSize="12" VerticalAlignment="Center"/>
+                            <TextBox Text="{Binding Explore.SearchKeyword, Mode=TwoWay}" Watermark="搜索关键词..." VerticalAlignment="Center" MinWidth="120" FontSize="12"/>
+                            <Button Command="{Binding Explore.SearchCommand}" Content="搜索" MinWidth="50" FontSize="12" Padding="6,3"/>
+                            <Border Width="1" Background="#444" Margin="4,2"/>
+                            <Button Command="{Binding Explore.DownloadSelectedCommand}" Content="下载选中" MinWidth="72" FontSize="12" Padding="6,3"/>
+                            <Button Command="{Binding Explore.LoadNextPageCommand}" Content="加载更多" IsEnabled="{Binding Explore.HasNextPage}" MinWidth="72" FontSize="12" Padding="6,3"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding Explore.CurrentLabel}" FontSize="13" FontWeight="Bold" Foreground="#CCC" Margin="0,2,0,0"/>
+                        <ProgressBar IsIndeterminate="True" Height="2" IsVisible="{Binding Explore.IsLoading}"/>
+                    </StackPanel>
+                    <Grid DockPanel.Dock="Top" ColumnDefinitions="44,32,*,70" Margin="0,0,0,2" Background="#2A2A2A">
+                        <TextBlock Grid.Column="0" Text="序号" FontSize="11" FontWeight="Bold" Foreground="#888" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        <CheckBox Grid.Column="1" Margin="6,2" Click="OnExploreSelectAll" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="2" Text="标题" FontSize="12" FontWeight="Bold" Foreground="#AAA" VerticalAlignment="Center" Margin="6,0"/>
+                        <TextBlock Grid.Column="3" Text="时长" FontSize="12" FontWeight="Bold" Foreground="#AAA" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </Grid>
+                    <ScrollViewer x:Name="ExploreScrollViewer"><ItemsControl ItemsSource="{Binding Explore.Videos}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="1"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate><DataTemplate DataType="models:VideoItem">
+                            <Border Padding="5,3" BorderBrush="#333" BorderThickness="0,0,0,1" Background="{Binding RowBg}">
+                                <Grid ColumnDefinitions="44,32,*,70" VerticalAlignment="Center">
+                                    <TextBlock Grid.Column="0" Text="{Binding Number}" FontSize="11" Foreground="#666" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                    <CheckBox Grid.Column="1" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding Title}" FontSize="12" Foreground="#DDD" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="4,0" ToolTip.Tip="{Binding TipText}"/>
+                                    <TextBlock Grid.Column="3" Text="{Binding Duration, FallbackValue='--'}" FontSize="11" Foreground="#888" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate></ItemsControl.ItemTemplate>
+                    </ItemsControl></ScrollViewer>
+                </DockPanel>
+            </TabItem>
+
+            <!-- Tab 2: 下载管理 -->
+            <TabItem Header="下载管理">
+                <DockPanel Margin="12">
+                    <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,12">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock VerticalAlignment="Center" Text="视频地址:" Foreground="#AAA" FontSize="12"/>
+                            <TextBox x:Name="UrlInput" Text="{Binding InputUrl, Mode=TwoWay}"
+                                     Watermark="粘贴网页地址，按回车添加" VerticalAlignment="Center" MinWidth="300"/>
+                            <Button Command="{Binding AddDownloadCommand}" Content="添加下载" MinWidth="80"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Command="{Binding ClearCompletedCommand}" Content="清除已完成"/>
+                            <Button Command="{Binding CancelAllCommand}" Content="取消全部"/>
+                            <Button Command="{Binding OpenFolderCommand}" Content="打开下载目录"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,100,90,80" Margin="0,0,0,2" Background="#2A2A2A">
+                        <TextBlock Grid.Column="0" Text="标题" FontSize="12" FontWeight="Bold" Foreground="#AAA" Margin="8,4"/>
+                        <TextBlock Grid.Column="1" Text="剩余时间" FontSize="12" FontWeight="Bold" Foreground="#AAA" Margin="4,4"/>
+                        <TextBlock Grid.Column="2" Text="状态" FontSize="12" FontWeight="Bold" Foreground="#AAA" Margin="4,4"/>
+                        <TextBlock Grid.Column="3" Text="操作" FontSize="12" FontWeight="Bold" Foreground="#AAA" Margin="4,4" HorizontalAlignment="Center"/>
+                    </Grid>
+                    <ScrollViewer><ItemsControl ItemsSource="{Binding Downloads}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="1"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate><DataTemplate DataType="models:DownloadTask">
+                            <Border Padding="6,3" BorderBrush="#333" BorderThickness="0,0,0,1" Background="{Binding RowBackground}" PointerPressed="OnDownloadDoubleClick">
+                                <Grid ColumnDefinitions="*,100,90,80" VerticalAlignment="Center">
+                                    <StackPanel Grid.Column="0" Spacing="1" Margin="0,0,6,0">
+                                        <TextBlock Text="{Binding Title, FallbackValue='等待解析...'}" FontSize="12" Foreground="#DDD" TextTrimming="CharacterEllipsis"
+                                                   ToolTip.Tip="{Binding ErrorMessage}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="2,0">
+                                        <TextBlock Text="{Binding Eta}" FontSize="11" Foreground="#BBB" IsVisible="{Binding IsDownloading}"/>
+                                        <TextBlock Text="{Binding Speed}" FontSize="10" Foreground="#888" IsVisible="{Binding IsDownloading}"/>
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="2" Text="{Binding StatusText}" FontSize="11" Foreground="#BBB" VerticalAlignment="Center"
+                                               ToolTip.Tip="{Binding ErrorMessage}"/>
+                                    <Button Grid.Column="3" Content="移除" Click="OnRemoveDownload" Tag="{Binding}" FontSize="11" Padding="10,2" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate></ItemsControl.ItemTemplate>
+                    </ItemsControl></ScrollViewer>
+                </DockPanel>
+            </TabItem>
+
+            <!-- Tab 3: 设置 -->
+            <TabItem Header="设置">
+                <ScrollViewer><StackPanel Margin="16" Spacing="12" MaxWidth="500">
+                    <TextBlock Text="下载设置" FontSize="16" FontWeight="Bold" Foreground="#CCC"/>
+                    <StackPanel Spacing="4"><TextBlock Text="下载保存路径" FontSize="12" Foreground="#888"/>
+                        <TextBox Text="{Binding Settings.DownloadPath, Mode=TwoWay}" Watermark="例如: D:\Videos" FontSize="13"/></StackPanel>
+                    <StackPanel Spacing="4"><TextBlock Text="日期子目录格式" FontSize="12" Foreground="#888"/>
+                        <ComboBox SelectedIndex="{Binding Settings.DateFormatIndex}" FontSize="13">
+                            <ComboBoxItem>不分类</ComboBoxItem><ComboBoxItem>yyyyMMdd</ComboBoxItem><ComboBoxItem>yyyy-MM-dd</ComboBoxItem><ComboBoxItem>yyyy-MM</ComboBoxItem>
+                        </ComboBox></StackPanel>
+                    <StackPanel Spacing="4"><TextBlock Text="同时下载数量" FontSize="12" Foreground="#888"/>
+                        <TextBox Text="{Binding Settings.MaxConcurrent, Mode=TwoWay}" FontSize="13" Width="60"/></StackPanel>
+                    <Button Command="{Binding Settings.SaveCommand}" Content="保存设置" HorizontalAlignment="Left" MinWidth="100" Margin="0,8,0,0"/>
+                    <TextBlock Text="{Binding Settings.StatusMessage}" FontSize="12" Foreground="#FF9900"/>
+                </StackPanel></ScrollViewer>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>
