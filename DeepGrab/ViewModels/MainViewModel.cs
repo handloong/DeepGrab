@@ -137,9 +137,19 @@ public partial class MainViewModel : ObservableObject
                     videoUrl, task.Title, referer, _http,
                     (done, total) =>
                     {
-                        task.Progress = total > 0 ? (double)done / total * 100 : 0;
-                        task.Speed = $"ts {done}/{total}";
-                        task.Eta = "下载分片";
+                        if (done < 0)
+                        {
+                            task.Progress = 100;
+                            task.Speed = "合并中";
+                            task.Eta = "";
+                            task.Status = DownloadStatus.PostProcessing;
+                        }
+                        else
+                        {
+                            task.Progress = total > 0 ? (double)done / total * 100 : 0;
+                            task.Speed = $"ts {done}/{total}";
+                            task.Eta = "下载分片";
+                        }
                     },
                     cts.Token);
             }

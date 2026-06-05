@@ -43,28 +43,40 @@ public partial class ExploreViewModel : ObservableObject
 
     [RelayCommand] async Task LoadCategory(string labelUrl)
     {
-        var parts = labelUrl.Split('|');
-        var label = parts[0]; var url = parts[1];
-        await FirstPage(label, url);
+        try
+        {
+            var parts = labelUrl.Split('|');
+            var label = parts[0]; var url = parts[1];
+            await FirstPage(label, url);
+        }
+        catch { }
     }
 
     [RelayCommand] async Task LoadCategoryByIndex(int idx)
     {
-        if (idx < 0 || idx >= Categories.Count) return;
-        await FirstPage(Categories[idx].Label, Categories[idx].Url);
+        try
+        {
+            if (idx < 0 || idx >= Categories.Count) return;
+            await FirstPage(Categories[idx].Label, Categories[idx].Url);
+        }
+        catch { }
     }
 
     [RelayCommand] async Task Search()
     {
-        if (string.IsNullOrWhiteSpace(SearchKeyword)) return;
-        string dv = "", dl = "全部";
-        var fs = _site.DurationFilters;
-        int di = DurationIndex;
-        if (di >= 0 && di < fs.Count) { dl = fs[di].Label; dv = fs[di].Value; }
-        CurrentLabel = $"搜索: {SearchKeyword} ({dl})";
-        string url = _site.BuildSearchUrl(SearchKeyword.Trim());
-        if (!string.IsNullOrEmpty(dv)) url += dv;
-        await FirstPage(null, url);
+        try
+        {
+            if (string.IsNullOrWhiteSpace(SearchKeyword)) return;
+            string dv = "", dl = "全部";
+            var fs = _site.DurationFilters;
+            int di = DurationIndex;
+            if (di >= 0 && di < fs.Count) { dl = fs[di].Label; dv = fs[di].Value; }
+            CurrentLabel = $"搜索: {SearchKeyword} ({dl})";
+            string url = _site.BuildSearchUrl(SearchKeyword.Trim());
+            if (!string.IsNullOrEmpty(dv)) url += dv;
+            await FirstPage(null, url);
+        }
+        catch { }
     }
 
     [RelayCommand]
@@ -94,7 +106,9 @@ public partial class ExploreViewModel : ObservableObject
             // 预热：访问首页获取 Cloudflare cookie（对需要反爬的站点有效）
             try { using var w = new HttpRequestMessage(HttpMethod.Get, _site.BaseUrl+"/"); AddHeaders(w, null); await _http.SendAsync(w); } catch { }
             await AppendPage(url);
+            HasNextPage = Videos.Count > 0;
         }
+        catch { HasNextPage = false; }
         finally { IsLoading=false; }
     }
 

@@ -157,6 +157,9 @@ public class VideoDownloadService
 
             await Task.WhenAll(tasks);
 
+            // 通知 UI：进入合并阶段（done<0 表示合并中）
+            onProgress?.Invoke(-1, total);
+
             // 4. 生成本地 concat 列表
             string concatPath = Path.Combine(tempDir, "concat.txt");
             var sb = new System.Text.StringBuilder();
@@ -169,13 +172,12 @@ public class VideoDownloadService
             await File.WriteAllTextAsync(concatPath, sb.ToString(), ct);
 
             // 5. ffmpeg 纯本地拼接（不联网，0 TLS 风险）
-            string errLog = "";
+            var errSb = new System.Text.StringBuilder();
             var psi = new ProcessStartInfo
             {
                 FileName = _ffmpegPath,
                 Arguments = $"-y -f concat -safe 0 -i \"{concatPath}\" -c copy \"{outputPath}\"",
                 RedirectStandardError = true,
-                RedirectStandardOutput = true,
                 UseShellExecute = false,
                 CreateNoWindow = true,
             };
@@ -183,14 +185,13 @@ public class VideoDownloadService
             using var proc = new Process { StartInfo = psi };
             var tcs = new TaskCompletionSource<bool>();
             proc.EnableRaisingEvents = true;
-            proc.Exited += (_, _) =>
-            {
-                try { errLog = proc.StandardError.ReadToEnd(); } catch { }
-                tcs.TrySetResult(true);
-            };
+            proc.ErrorDataReceived += (_, e) => { if (e.Data != null) errSb.AppendLine(e.Data); };
+            proc.Exited += (_, _) => tcs.TrySetResult(true);
             proc.Start();
+            proc.BeginErrorReadLine();
             using var ctReg = ct.Register(() => { try { proc.Kill(); } catch { } });
             await tcs.Task;
+            string errLog = errSb.ToString();
 
             if (failed > 0)
                 File.WriteAllText(outputPath + ".ts_errors.txt",
